@@ -1,0 +1,8 @@
+﻿{
+  "name": "Realtime Translator",
+  "short_name": "Translator",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f2ea",
+  "theme_color": "#1f6f78"
+}

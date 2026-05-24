@@ -1,0 +1,98 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1f6f78" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>Realtime Translator</title>
+  </head>
+  <body>
+    <main class="app">
+      <h1>Realtime Translator</h1>
+      <details class="card control-panel">
+        <summary>Controls</summary>
+        <div class="grid controls">
+          <div>
+            <label for="language">Input Language</label>
+            <select id="language">
+              <option value="mandarin">Mandarin</option>
+              <option value="russian">Russian</option>
+              <option value="korean">Korean</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="outputMode">Output</label>
+            <select id="outputMode">
+              <option value="text-only">Text Only</option>
+              <option value="text-and-speech" selected>Text and Speech</option>
+              <option value="speech-only">Speech Only</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="speechSpeed">Speech Speed</label>
+            <select id="speechSpeed">
+              <option value="1">1.0</option>
+              <option value="1.25">1.25</option>
+              <option value="1.5" selected>1.5</option>
+              <option value="1.75">1.75</option>
+            </select>
+          </div>
+
+          <fieldset class="voice-group">
+            <legend>Voice</legend>
+            <label class="radio-option">
+              <input type="radio" name="voiceGender" value="male" checked />
+              <span>Male</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="voiceGender" value="female" />
+              <span>Female</span>
+            </label>
+          </fieldset>
+
+          <div>
+            <label for="chunkMs">Chunk Size (ms)</label>
+            <select id="chunkMs">
+              <option value="7000">7000 (max accuracy)</option>
+              <option value="5000">5000 (better accuracy)</option>
+              <option value="4000">4000</option>
+              <option value="3000">3000</option>
+              <option value="2000">2000 (lower delay)</option>
+            </select>
+          </div>
+
+          <details class="api-key-panel">
+            <summary>OpenAI API Key</summary>
+            <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" aria-label="OpenAI API Key" />
+          </details>
+        </div>
+      </details>
+
+      <section class="card" style="margin-top: 12px">
+        <div class="row action-row">
+          <button id="startBtn" class="primary icon-button" aria-label="Start" title="Start">
+            <span aria-hidden="true">&#9654;</span>
+          </button>
+          <button id="pauseBtn" class="icon-button" aria-label="Pause" title="Pause">
+            <span id="pauseIcon" aria-hidden="true">&#10074;&#10074;</span>
+          </button>
+          <button id="stopBtn" class="warn icon-button" aria-label="Stop" title="Stop">
+            <span aria-hidden="true">&#9632;</span>
+          </button>
+          <button id="clearBtn" class="icon-button" aria-label="Clear Text" title="Clear Text">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div id="status" class="status">Idle.</div>
+        <div id="transcript" class="transcript"></div>
+        <div id="cost" class="cost">Estimated session cost: $0.00 | Monthly usage: $0.00 / $20.00</div>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
