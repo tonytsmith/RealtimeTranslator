@@ -4,6 +4,7 @@ const els = {
   outputLanguage: document.getElementById("outputLanguage"),
   outputMode: document.getElementById("outputMode"),
   responseConfig: document.getElementById("responseConfig"),
+  qualityDelay: document.getElementById("qualityDelay"),
   speechSpeed: document.getElementById("speechSpeed"),
   showSource: document.getElementById("showSource"),
   startBtn: document.getElementById("startBtn"),
@@ -41,13 +42,32 @@ const state = {
 };
 
 const API_KEY_STORAGE = "translator_openai_api_key";
-const SILENCE_MS = 1400;
-const MIN_SEGMENT_MS = 4500;
-const MAX_SEGMENT_MS = 18000;
-const PRE_ROLL_MS = 900;
 const MIN_AUDIO_MS_TO_SEND = 1000;
 const VOICE_RMS_THRESHOLD = 0.011;
 const CONTEXT_CHARS = 6000;
+const QUALITY_PROFILES = {
+  realtime: {
+    label: "More Realtime",
+    silenceMs: 850,
+    minSegmentMs: 2500,
+    maxSegmentMs: 9000,
+    preRollMs: 650
+  },
+  balanced: {
+    label: "Balanced",
+    silenceMs: 1400,
+    minSegmentMs: 4500,
+    maxSegmentMs: 18000,
+    preRollMs: 900
+  },
+  complete: {
+    label: "More Complete",
+    silenceMs: 1900,
+    minSegmentMs: 7000,
+    maxSegmentMs: 26000,
+    preRollMs: 1100
+  }
+};
 
 function selectedVoiceGender() {
   return document.querySelector('input[name="voiceGender"]:checked')?.value || "male";
@@ -66,8 +86,12 @@ function setStatus(text) {
 function setCost(usage) {
   const sessionAmount = Number(usage?.estimatedUsd || 0);
   const monthlyAmount = Number(usage?.monthlyEstimatedUsd || 0);
-  const monthlyLimit = Number(usage?.monthlyLimitUsd || 20);
+  const monthlyLimit = Number(usage?.monthlyLimitUsd || 50);
   els.cost.textContent = `Estimated session cost: $${sessionAmount.toFixed(2)} | Monthly usage: $${monthlyAmount.toFixed(2)} / $${monthlyLimit.toFixed(2)}`;
+}
+
+function selectedQualityProfile() {
+  return QUALITY_PROFILES[els.qualityDelay.value] || QUALITY_PROFILES.realtime;
 }
 
 function updateListeningStatus() {
@@ -82,7 +106,7 @@ function updateListeningStatus() {
 }
 
 function setControlsDisabled(disabled) {
-  for (const control of [els.language, els.outputLanguage, els.outputMode, els.responseConfig, els.speechSpeed]) {
+  for (const control of [els.language, els.outputLanguage, els.outputMode, els.responseConfig, els.qualityDelay, els.speechSpeed]) {
     control.disabled = disabled;
   }
 
@@ -206,8 +230,9 @@ function trimPreRoll(now) {
   if (now - state.lastTrimAt < 300 || state.pcmChunks.length === 0) return;
   state.lastTrimAt = now;
 
+  const profile = selectedQualityProfile();
   const sampleRate = state.audioContext?.sampleRate || 48000;
-  const keepSamples = Math.floor((sampleRate * PRE_ROLL_MS) / 1000);
+  const keepSamples = Math.floor((sampleRate * profile.preRollMs) / 1000);
   const merged = mergePcmChunks(state.pcmChunks);
   state.pcmChunks = [merged.slice(Math.max(0, merged.length - keepSamples))];
 }
@@ -363,10 +388,11 @@ function handleAudioProcess(event) {
   state.pcmChunks.push(copy);
 
   const level = rms(input);
+  const profile = selectedQualityProfile();
   if (level >= VOICE_RMS_THRESHOLD) {
     if (!state.voiceStarted) {
       state.voiceStarted = true;
-      state.segmentStartAt = now - PRE_ROLL_MS;
+      state.segmentStartAt = now - profile.preRollMs;
     }
     state.lastVoiceAt = now;
   }
@@ -378,8 +404,8 @@ function handleAudioProcess(event) {
 
   const segmentAge = now - state.segmentStartAt;
   const silenceAge = now - state.lastVoiceAt;
-  if ((segmentAge >= MIN_SEGMENT_MS && silenceAge >= SILENCE_MS) || segmentAge >= MAX_SEGMENT_MS) {
-    flushPcmSegment(segmentAge >= MAX_SEGMENT_MS ? "max" : "pause");
+  if ((segmentAge >= profile.minSegmentMs && silenceAge >= profile.silenceMs) || segmentAge >= profile.maxSegmentMs) {
+    flushPcmSegment(segmentAge >= profile.maxSegmentMs ? "max" : "pause");
   }
 }
 
@@ -438,7 +464,7 @@ async function start() {
     state.paused = false;
     setPauseButton(false);
     setControlsDisabled(true);
-    setStatus(`Listening for speech. Response: ${els.responseConfig.options[els.responseConfig.selectedIndex].text}.`);
+    setStatus(`Listening for speech. Response: ${els.responseConfig.options[els.responseConfig.selectedIndex].text}. Delay: ${selectedQualityProfile().label}.`);
   } catch (error) {
     setStatus(`Microphone error: ${error.message}`);
     stopCapture();

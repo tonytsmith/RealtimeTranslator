@@ -13,8 +13,7 @@
       <div class="title-row">
         <h1>High Accuracy Live</h1>
         <div class="title-actions">
-          <a class="mode-link" href="/">Stable Version</a>
-          <a class="mode-link" href="/realtime">Realtime Beta</a>
+          <a class="mode-link" href="/stable">Stable Version</a>
         </div>
       </div>
 
@@ -67,9 +66,18 @@
           <div>
             <label for="responseConfig">Response</label>
             <select id="responseConfig">
-              <option value="fast">Fast</option>
+              <option value="fast" selected>Fast</option>
               <option value="balanced">Balanced</option>
-              <option value="best" selected>Best Accuracy</option>
+              <option value="best">Best Accuracy</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="qualityDelay">Quality / Delay</label>
+            <select id="qualityDelay">
+              <option value="realtime" selected>More Realtime</option>
+              <option value="balanced">Balanced</option>
+              <option value="complete">More Complete</option>
             </select>
           </div>
 
@@ -77,8 +85,8 @@
             <label for="speechSpeed">Speech Speed</label>
             <select id="speechSpeed">
               <option value="1">1.0</option>
-              <option value="1.25">1.25</option>
-              <option value="1.5" selected>1.5</option>
+              <option value="1.25" selected>1.25</option>
+              <option value="1.5">1.5</option>
               <option value="1.75">1.75</option>
             </select>
           </div>
@@ -127,7 +135,7 @@
 
         <div id="status" class="status">Idle.</div>
         <div id="transcript" class="transcript"></div>
-        <div id="cost" class="cost">Estimated session cost: $0.00 | Monthly usage: $0.00 / $20.00</div>
+        <div id="cost" class="cost">Estimated session cost: $0.00 | Monthly usage: $0.00 / $50.00</div>
       </section>
     </main>
 

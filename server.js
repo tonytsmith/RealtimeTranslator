@@ -16,7 +16,7 @@ const authSessions = new Map();
 const serverOpenAiApiKey = process.env.OPENAI_API_KEY || "";
 const monthlyUsageLimitUsd = Number.isFinite(Number(process.env.MONTHLY_USAGE_LIMIT_USD))
   ? Number(process.env.MONTHLY_USAGE_LIMIT_USD)
-  : 20;
+  : 50;
 const monthlyUsage = {
   monthKey: currentMonthKey(),
   estimatedUsd: 0
@@ -191,7 +191,7 @@ app.post("/api/logout", (req, res) => {
 });
 
 app.use(requireAuth);
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 app.get("/api/health", (_, res) => {
   res.json({ ok: true });
@@ -756,8 +756,16 @@ app.get("/accuracy", (_, res) => {
   res.sendFile(path.join(__dirname, "public", "accuracy.html"));
 });
 
-app.get("*", (_, res) => {
+app.get("/stable", (_, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/", (_, res) => {
+  res.sendFile(path.join(__dirname, "public", "accuracy.html"));
+});
+
+app.get("*", (_, res) => {
+  res.sendFile(path.join(__dirname, "public", "accuracy.html"));
 });
 
 app.use((error, _req, res, _next) => {

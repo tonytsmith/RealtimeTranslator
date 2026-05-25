@@ -1,4 +1,4 @@
-﻿# Realtime Translator (PWA)
+﻿# High Accuracy Live Translator (PWA)
 
 Installable web app for Windows + Android Chrome that listens to microphone input and translates speech into text and/or audio in the selected output language.
 
@@ -12,13 +12,22 @@ Installable web app for Windows + Android Chrome that listens to microphone inpu
 npm install
 npm run dev
 ```
-Open `http://localhost:8787`.
+Open `http://localhost:8787`. The default page is High Accuracy Live.
 
 ## Use
 ### High Accuracy Live
-Open `/accuracy` after logging in.
+Open `/` or `/accuracy` after logging in.
 
 This mode is designed for speeches. It records continuously, waits for natural pauses or a maximum segment length, transcribes each segment, sends recent transcript context with the new segment, then translates with the selected response configuration.
+
+Default controls:
+- Input Language: `Mandarin`
+- Output Language: `English`
+- Output: `Text and Speech`
+- Response: `Fast`
+- Quality / Delay: `More Realtime`
+- Speech Speed: `1.25`
+- Voice: `Male`
 
 Response configurations:
 - `Fast`: `gpt-4.1-mini`
@@ -28,6 +37,8 @@ Response configurations:
 Use this mode when accuracy matters more than the lowest possible delay.
 
 ### Stable chunk translator
+Open `/stable` after logging in.
+
 1. Log in with the app password.
 2. Enter your OpenAI API key.
 3. Select input and output languages.
@@ -38,21 +49,6 @@ Use this mode when accuracy matters more than the lowest possible delay.
 8. Press `Resume` to continue translation.
 9. Press `Stop` to end the session and reset session-cost totals.
 
-### Realtime beta
-Open `/realtime` after logging in.
-
-This separate version keeps the stable translator intact, but streams microphone audio through OpenAI Realtime over WebRTC. It should usually produce smoother sentence boundaries because the model hears the live stream instead of isolated audio chunks.
-
-Requirements for the realtime beta:
-- Set `OPENAI_API_KEY` in the server or Render environment variables.
-- Optional: set `REALTIME_MODEL` to override the default `gpt-realtime-2`.
-- Use HTTPS when hosted so mobile browsers allow microphone access.
-
-Current realtime beta limits:
-- It uses the server-side API key, not the browser API key field.
-- It shows reported realtime token usage when available, but does not yet convert realtime usage into a dollar estimate.
-- The monthly usage cap blocks starting a new realtime session only if the existing tracked monthly total is already over the limit.
-
 ## Access password
 - Default password: `Translate`
 - Override for hosting: set `APP_PASSWORD` in your host environment variables.
@@ -62,7 +58,7 @@ Current realtime beta limits:
 - Shows running session estimate only.
 - Estimate is computed from usage tokens when available plus TTS characters.
 - Stops translation when estimated monthly usage reaches the configured monthly limit.
-- Default monthly usage limit: `$20`.
+- Default monthly usage limit: `$50`.
 - Pricing constants can be tuned via env vars:
   - `PRICE_TRANSCRIBE_INPUT_PER_1M`
   - `PRICE_TRANSLATE_INPUT_PER_1M`
@@ -80,10 +76,8 @@ Current realtime beta limits:
 - `TTS_VOICE` (optional override for all voices)
 - `TTS_MALE_VOICE` (default `cedar`)
 - `TTS_FEMALE_VOICE` (default `marin`)
-- `OPENAI_API_KEY` (required for `/realtime`)
-- `REALTIME_MODEL` (default `gpt-realtime-2`)
 - `APP_PASSWORD` (default `Translate`)
-- `MONTHLY_USAGE_LIMIT_USD` (default `20`)
+- `MONTHLY_USAGE_LIMIT_USD` (default `50`)
 
 High Accuracy Live pricing overrides:
 - `PRICE_TRANSLATE_FAST_INPUT_PER_1M`

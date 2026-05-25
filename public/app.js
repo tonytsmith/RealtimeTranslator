@@ -51,7 +51,7 @@ function setStatus(text) {
 function setCost(usage) {
   const sessionAmount = Number(usage?.estimatedUsd || 0);
   const monthlyAmount = Number(usage?.monthlyEstimatedUsd || 0);
-  const monthlyLimit = Number(usage?.monthlyLimitUsd || 20);
+  const monthlyLimit = Number(usage?.monthlyLimitUsd || 50);
   els.cost.textContent = `Estimated session cost: $${sessionAmount.toFixed(2)} | Monthly usage: $${monthlyAmount.toFixed(2)} / $${monthlyLimit.toFixed(2)}`;
 }
 
