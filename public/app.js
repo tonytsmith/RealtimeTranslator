@@ -38,10 +38,6 @@ function selectedVoiceGender() {
   return document.querySelector('input[name="voiceGender"]:checked')?.value || "male";
 }
 
-function selectedAccentMode() {
-  return document.querySelector('input[name="accentMode"]:checked')?.value || "none";
-}
-
 function setPauseButton(paused) {
   els.pauseBtn.setAttribute("aria-label", paused ? "Resume" : "Pause");
   els.pauseBtn.setAttribute("title", paused ? "Resume" : "Pause");
@@ -172,7 +168,6 @@ async function sendChunk(blob) {
   formData.append("outputMode", els.outputMode.value);
   formData.append("speechSpeed", els.speechSpeed.value);
   formData.append("voiceGender", selectedVoiceGender());
-  formData.append("accentMode", selectedAccentMode());
   formData.append("audio", blob, "chunk.wav");
 
   state.inFlight += 1;

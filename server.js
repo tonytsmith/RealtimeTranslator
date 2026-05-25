@@ -226,7 +226,6 @@ const languageNames = {
 
 const supportedOutputModes = new Set(["text-only", "text-and-speech", "speech-only"]);
 const supportedSpeechSpeeds = new Set([1, 1.25, 1.5, 1.75]);
-const supportedAccentModes = new Set(["none", "light", "strong"]);
 const voiceByGender = {
   male: process.env.TTS_MALE_VOICE || "cedar",
   female: process.env.TTS_FEMALE_VOICE || "marin"
@@ -297,23 +296,8 @@ function selectedVoice(value) {
   return voiceByGender[value] || voiceByGender.male;
 }
 
-function ttsInstructions({ sourceLanguageName, outputLanguageName, accentMode }) {
-  const base = `Speak clearly in ${outputLanguageName}. Keep the pace natural and easy to understand.`;
-  if (accentMode === "none") {
-    return base;
-  }
-
-  const accentName = `${sourceLanguageName}-accented ${outputLanguageName}`;
-
-  if (accentMode === "strong" && sourceLanguageName !== outputLanguageName) {
-    return `${base} Use a clearly noticeable ${accentName} speaking style. Do not use standard American English pronunciation when speaking English. Keep the accent consistent across the whole sentence, but keep every word understandable.`;
-  }
-
-  if (sourceLanguageName !== outputLanguageName) {
-    return `${base} Use a subtle but noticeable ${accentName} speaking style. Avoid sounding fully standard American when speaking English. Clarity is more important than accent strength.`;
-  }
-
-  return `${base} Use a natural native ${outputLanguageName} pronunciation.`;
+function ttsInstructions(outputLanguageName) {
+  return `Speak clearly in ${outputLanguageName}. Keep the pace natural and easy to understand.`;
 }
 
 app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
@@ -335,13 +319,11 @@ app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
     const languageCode = supportedLanguages[selectedLanguage];
     const selectedOutputLanguage = String(req.body.outputLanguage || "english").toLowerCase();
     const outputLanguageName = languageNames[selectedOutputLanguage];
-    const sourceLanguageName = languageNames[selectedLanguage] || selectedLanguage;
     const outputMode = supportedOutputModes.has(req.body.outputMode) ? req.body.outputMode : "text-and-speech";
     const wantsText = outputMode !== "speech-only";
     const wantsSpeech = outputMode !== "text-only";
     const speechSpeed = selectedSpeechSpeed(req.body.speechSpeed);
     const ttsVoice = selectedVoice(req.body.voiceGender);
-    const accentMode = supportedAccentModes.has(req.body.accentMode) ? req.body.accentMode : "none";
 
     if (!languageCode) {
       return res.status(400).json({ error: "Unsupported language selection." });
@@ -402,7 +384,7 @@ app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
         model: process.env.TTS_MODEL || "gpt-4o-mini-tts",
         voice: process.env.TTS_VOICE || ttsVoice,
         input: translatedText,
-        instructions: ttsInstructions({ sourceLanguageName, outputLanguageName, accentMode }),
+        instructions: ttsInstructions(outputLanguageName),
         format: "mp3",
         speed: speechSpeed
       });
