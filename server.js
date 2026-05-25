@@ -197,6 +197,7 @@ app.get("/api/health", (_, res) => {
 });
 
 const supportedLanguages = {
+  english: "en",
   mandarin: "zh",
   russian: "ru",
   korean: "ko",
@@ -209,11 +210,26 @@ const supportedLanguages = {
   greek: "el"
 };
 
+const languageNames = {
+  english: "English",
+  mandarin: "Mandarin Chinese",
+  russian: "Russian",
+  korean: "Korean",
+  spanish: "Spanish",
+  french: "French",
+  japanese: "Japanese",
+  german: "German",
+  portuguese: "Portuguese",
+  italian: "Italian",
+  greek: "Greek"
+};
+
 const supportedOutputModes = new Set(["text-only", "text-and-speech", "speech-only"]);
 const supportedSpeechSpeeds = new Set([1, 1.25, 1.5, 1.75]);
+const supportedAccentModes = new Set(["none", "light"]);
 const voiceByGender = {
-  male: process.env.TTS_MALE_VOICE || "onyx",
-  female: process.env.TTS_FEMALE_VOICE || "nova"
+  male: process.env.TTS_MALE_VOICE || "cedar",
+  female: process.env.TTS_FEMALE_VOICE || "marin"
 };
 
 const sessionTotals = new Map();
@@ -281,6 +297,19 @@ function selectedVoice(value) {
   return voiceByGender[value] || voiceByGender.male;
 }
 
+function ttsInstructions({ sourceLanguageName, outputLanguageName, accentMode }) {
+  const base = `Speak clearly in ${outputLanguageName}. Keep the pace natural and easy to understand.`;
+  if (accentMode !== "light") {
+    return base;
+  }
+
+  if (outputLanguageName === "English" && sourceLanguageName !== "English") {
+    return `${base} Use a light ${sourceLanguageName} accent while remaining very clear.`;
+  }
+
+  return `${base} Use a light natural accent associated with ${outputLanguageName}.`;
+}
+
 app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
   try {
     if (currentMonthlyUsage().estimatedUsd >= monthlyUsageLimitUsd) {
@@ -298,14 +327,22 @@ app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
     const sessionId = req.body.sessionId || "default";
     const selectedLanguage = String(req.body.language || "").toLowerCase();
     const languageCode = supportedLanguages[selectedLanguage];
+    const selectedOutputLanguage = String(req.body.outputLanguage || "english").toLowerCase();
+    const outputLanguageName = languageNames[selectedOutputLanguage];
+    const sourceLanguageName = languageNames[selectedLanguage] || selectedLanguage;
     const outputMode = supportedOutputModes.has(req.body.outputMode) ? req.body.outputMode : "text-and-speech";
     const wantsText = outputMode !== "speech-only";
     const wantsSpeech = outputMode !== "text-only";
     const speechSpeed = selectedSpeechSpeed(req.body.speechSpeed);
     const ttsVoice = selectedVoice(req.body.voiceGender);
+    const accentMode = supportedAccentModes.has(req.body.accentMode) ? req.body.accentMode : "none";
 
     if (!languageCode) {
       return res.status(400).json({ error: "Unsupported language selection." });
+    }
+
+    if (!outputLanguageName) {
+      return res.status(400).json({ error: "Unsupported output language selection." });
     }
 
     if (!req.file?.buffer) {
@@ -342,11 +379,11 @@ app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
         {
           role: "system",
           content:
-            "Translate the transcript into faithful natural English. Do not summarize, shorten, or omit details. Keep names, numbers, and technical terms intact. If the input is a partial sentence, translate only what is present."
+            `Translate the transcript into faithful natural ${outputLanguageName}. Do not summarize, shorten, or omit details. Keep names, numbers, and technical terms intact. If the input is a partial sentence, translate only what is present. Return only the ${outputLanguageName} translation.`
         },
         {
           role: "user",
-          content: `Translate to English:\n\n${sourceText}`
+          content: `Translate to ${outputLanguageName}:\n\n${sourceText}`
         }
       ]
     });
@@ -359,6 +396,7 @@ app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
         model: process.env.TTS_MODEL || "gpt-4o-mini-tts",
         voice: process.env.TTS_VOICE || ttsVoice,
         input: translatedText,
+        instructions: ttsInstructions({ sourceLanguageName, outputLanguageName, accentMode }),
         format: "mp3",
         speed: speechSpeed
       });

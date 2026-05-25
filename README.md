@@ -1,6 +1,6 @@
 ﻿# Realtime Translator (PWA)
 
-Installable web app for Windows + Android Chrome that listens to microphone input and translates Mandarin/Russian/Korean speech to English text + audio.
+Installable web app for Windows + Android Chrome that listens to microphone input and translates speech into text and/or audio in the selected output language.
 
 ## Requirements
 - Node.js 20+
@@ -17,9 +17,9 @@ Open `http://localhost:8787`.
 ## Use
 1. Log in with the app password.
 2. Enter your OpenAI API key.
-3. Select input language.
+3. Select input and output languages.
 4. Select output mode: `Text Only`, `Text and Speech`, or `Speech Only`.
-5. Select speech speed and voice when speech output is enabled.
+5. Select speech speed, voice, and accent when speech output is enabled.
 6. Press `Start`.
 7. Press `Pause` to keep listening but suppress translation/output.
 8. Press `Resume` to continue translation.
@@ -47,12 +47,13 @@ Open `http://localhost:8787`.
 - `TRANSLATE_MODEL` (default `gpt-4.1-mini`)
 - `TTS_MODEL` (default `gpt-4o-mini-tts`)
 - `TTS_VOICE` (optional override for all voices)
-- `TTS_MALE_VOICE` (default `onyx`)
-- `TTS_FEMALE_VOICE` (default `nova`)
+- `TTS_MALE_VOICE` (default `cedar`)
+- `TTS_FEMALE_VOICE` (default `marin`)
 - `APP_PASSWORD` (default `Translate`)
 - `MONTHLY_USAGE_LIMIT_USD` (default `20`)
 
 ## Notes
+- Supported input/output languages: English, Mandarin, Russian, Korean, Spanish, French, Japanese, German, Portuguese, Italian, Greek.
 - The app does not save transcript history.
 - The app is optimized for accuracy over minimum latency.
 - PWA install: in Chrome, open app menu and choose `Install`.

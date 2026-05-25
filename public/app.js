@@ -1,6 +1,7 @@
 ﻿const els = {
   apiKey: document.getElementById("apiKey"),
   language: document.getElementById("language"),
+  outputLanguage: document.getElementById("outputLanguage"),
   chunkMs: document.getElementById("chunkMs"),
   outputMode: document.getElementById("outputMode"),
   speechSpeed: document.getElementById("speechSpeed"),
@@ -35,6 +36,10 @@ const API_KEY_STORAGE = "translator_openai_api_key";
 
 function selectedVoiceGender() {
   return document.querySelector('input[name="voiceGender"]:checked')?.value || "male";
+}
+
+function selectedAccentMode() {
+  return document.querySelector('input[name="accentMode"]:checked')?.value || "none";
 }
 
 function setPauseButton(paused) {
@@ -163,9 +168,11 @@ async function sendChunk(blob) {
   const formData = new FormData();
   formData.append("sessionId", state.sessionId);
   formData.append("language", els.language.value);
+  formData.append("outputLanguage", els.outputLanguage.value);
   formData.append("outputMode", els.outputMode.value);
   formData.append("speechSpeed", els.speechSpeed.value);
   formData.append("voiceGender", selectedVoiceGender());
+  formData.append("accentMode", selectedAccentMode());
   formData.append("audio", blob, "chunk.wav");
 
   state.inFlight += 1;

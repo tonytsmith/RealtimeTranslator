@@ -17,6 +17,24 @@
           <div>
             <label for="language">Input Language</label>
             <select id="language">
+              <option value="english">English</option>
+              <option value="mandarin">Mandarin</option>
+              <option value="russian">Russian</option>
+              <option value="korean">Korean</option>
+              <option value="spanish">Spanish</option>
+              <option value="french">French</option>
+              <option value="japanese">Japanese</option>
+              <option value="german">German</option>
+              <option value="portuguese">Portuguese</option>
+              <option value="italian">Italian</option>
+              <option value="greek">Greek</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="outputLanguage">Output Language</label>
+            <select id="outputLanguage">
+              <option value="english" selected>English</option>
               <option value="mandarin">Mandarin</option>
               <option value="russian">Russian</option>
               <option value="korean">Korean</option>
@@ -58,6 +76,18 @@
             <label class="radio-option">
               <input type="radio" name="voiceGender" value="female" />
               <span>Female</span>
+            </label>
+          </fieldset>
+
+          <fieldset class="voice-group">
+            <legend>Accent</legend>
+            <label class="radio-option">
+              <input type="radio" name="accentMode" value="none" checked />
+              <span>None</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="accentMode" value="light" />
+              <span>Light</span>
             </label>
           </fieldset>
 
