@@ -6,15 +6,15 @@
     <meta name="theme-color" content="#1f6f78" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="stylesheet" href="/styles.css" />
-    <title>Realtime Translator Beta</title>
+    <title>High Accuracy Live Translator</title>
   </head>
   <body>
     <main class="app">
       <div class="title-row">
-        <h1>Realtime Translator Beta</h1>
+        <h1>High Accuracy Live</h1>
         <div class="title-actions">
-          <a class="mode-link" href="/accuracy">High Accuracy Live</a>
           <a class="mode-link" href="/">Stable Version</a>
+          <a class="mode-link" href="/realtime">Realtime Beta</a>
         </div>
       </div>
 
@@ -65,6 +65,15 @@
           </div>
 
           <div>
+            <label for="responseConfig">Response</label>
+            <select id="responseConfig">
+              <option value="fast">Fast</option>
+              <option value="balanced">Balanced</option>
+              <option value="best" selected>Best Accuracy</option>
+            </select>
+          </div>
+
+          <div>
             <label for="speechSpeed">Speech Speed</label>
             <select id="speechSpeed">
               <option value="1">1.0</option>
@@ -85,11 +94,21 @@
               <span>Female</span>
             </label>
           </fieldset>
+
+          <label class="checkbox-option">
+            <input id="showSource" type="checkbox" />
+            <span>Show Source Transcript</span>
+          </label>
+
+          <details class="api-key-panel">
+            <summary>OpenAI API Key</summary>
+            <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" aria-label="OpenAI API Key" />
+          </details>
         </div>
       </details>
 
       <section class="card realtime-panel">
-        <p class="hint">This beta streams microphone audio directly through WebRTC for lower-latency, sentence-aware translation. It uses the server-side OpenAI key configured in Render.</p>
+        <p class="hint">This mode records continuously, cuts translation segments on natural pauses, and sends rolling transcript context to improve accuracy. It is designed to behave more like your manual ChatGPT workflow, but without missed speech between sends.</p>
 
         <div class="row action-row">
           <button id="startBtn" class="primary icon-button" aria-label="Start" title="Start">
@@ -107,12 +126,11 @@
         </div>
 
         <div id="status" class="status">Idle.</div>
-        <div id="transcript" class="transcript realtime-transcript"></div>
-        <div id="usage" class="cost">Realtime usage estimate: not available yet.</div>
-        <audio id="remoteAudio" autoplay></audio>
+        <div id="transcript" class="transcript"></div>
+        <div id="cost" class="cost">Estimated session cost: $0.00 | Monthly usage: $0.00 / $20.00</div>
       </section>
     </main>
 
-    <script src="/realtime.js" type="module"></script>
+    <script src="/accuracy.js" type="module"></script>
   </body>
 </html>

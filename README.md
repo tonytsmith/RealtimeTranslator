@@ -15,6 +15,18 @@ npm run dev
 Open `http://localhost:8787`.
 
 ## Use
+### High Accuracy Live
+Open `/accuracy` after logging in.
+
+This mode is designed for speeches. It records continuously, waits for natural pauses or a maximum segment length, transcribes each segment, sends recent transcript context with the new segment, then translates with the selected response configuration.
+
+Response configurations:
+- `Fast`: `gpt-4.1-mini`
+- `Balanced`: `gpt-4.1`
+- `Best Accuracy`: `gpt-5.5`
+
+Use this mode when accuracy matters more than the lowest possible delay.
+
 ### Stable chunk translator
 1. Log in with the app password.
 2. Enter your OpenAI API key.
@@ -61,6 +73,9 @@ Current realtime beta limits:
 ## Model env overrides
 - `TRANSCRIBE_MODEL` (default `gpt-4o-transcribe`)
 - `TRANSLATE_MODEL` (default `gpt-4.1-mini`)
+- `TRANSLATE_FAST_MODEL` (default `gpt-4.1-mini`)
+- `TRANSLATE_BALANCED_MODEL` (default `gpt-4.1`)
+- `TRANSLATE_BEST_MODEL` (default `gpt-5.5`)
 - `TTS_MODEL` (default `gpt-4o-mini-tts`)
 - `TTS_VOICE` (optional override for all voices)
 - `TTS_MALE_VOICE` (default `cedar`)
@@ -69,6 +84,14 @@ Current realtime beta limits:
 - `REALTIME_MODEL` (default `gpt-realtime-2`)
 - `APP_PASSWORD` (default `Translate`)
 - `MONTHLY_USAGE_LIMIT_USD` (default `20`)
+
+High Accuracy Live pricing overrides:
+- `PRICE_TRANSLATE_FAST_INPUT_PER_1M`
+- `PRICE_TRANSLATE_FAST_OUTPUT_PER_1M`
+- `PRICE_TRANSLATE_BALANCED_INPUT_PER_1M`
+- `PRICE_TRANSLATE_BALANCED_OUTPUT_PER_1M`
+- `PRICE_TRANSLATE_BEST_INPUT_PER_1M`
+- `PRICE_TRANSLATE_BEST_OUTPUT_PER_1M`
 
 ## Notes
 - Supported input/output languages: English, Mandarin, Russian, Korean, Spanish, French, Japanese, German, Portuguese, Italian, Greek.

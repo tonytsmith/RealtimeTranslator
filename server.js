@@ -227,6 +227,26 @@ const languageNames = {
 
 const supportedOutputModes = new Set(["text-only", "text-and-speech", "speech-only"]);
 const supportedSpeechSpeeds = new Set([1, 1.25, 1.5, 1.75]);
+const responseConfigs = {
+  fast: {
+    label: "Fast",
+    model: process.env.TRANSLATE_FAST_MODEL || "gpt-4.1-mini",
+    inputPricePer1M: envNumber(process.env.PRICE_TRANSLATE_FAST_INPUT_PER_1M, 0.4),
+    outputPricePer1M: envNumber(process.env.PRICE_TRANSLATE_FAST_OUTPUT_PER_1M, 1.6)
+  },
+  balanced: {
+    label: "Balanced",
+    model: process.env.TRANSLATE_BALANCED_MODEL || "gpt-4.1",
+    inputPricePer1M: envNumber(process.env.PRICE_TRANSLATE_BALANCED_INPUT_PER_1M, 2.0),
+    outputPricePer1M: envNumber(process.env.PRICE_TRANSLATE_BALANCED_OUTPUT_PER_1M, 8.0)
+  },
+  best: {
+    label: "Best Accuracy",
+    model: process.env.TRANSLATE_BEST_MODEL || "gpt-5.5",
+    inputPricePer1M: envNumber(process.env.PRICE_TRANSLATE_BEST_INPUT_PER_1M, 5.0),
+    outputPricePer1M: envNumber(process.env.PRICE_TRANSLATE_BEST_OUTPUT_PER_1M, 30.0)
+  }
+};
 const voiceByGender = {
   male: process.env.TTS_MALE_VOICE || "cedar",
   female: process.env.TTS_FEMALE_VOICE || "marin"
@@ -268,12 +288,12 @@ function getSessionTotals(sessionId) {
   return totals;
 }
 
-function estimateCostUsd(usage, ttsChars) {
+function estimateCostUsd(usage, ttsChars, pricing = {}) {
   // Approximate pricing constants; adjust from OpenAI pricing page as needed.
-  const transcriptionPer1MInput = Number(process.env.PRICE_TRANSCRIBE_INPUT_PER_1M || 6.0);
-  const translationInPer1M = Number(process.env.PRICE_TRANSLATE_INPUT_PER_1M || 0.4);
-  const translationOutPer1M = Number(process.env.PRICE_TRANSLATE_OUTPUT_PER_1M || 1.6);
-  const ttsPer1MChars = Number(process.env.PRICE_TTS_PER_1M_CHARS || 15.0);
+  const transcriptionPer1MInput = envNumber(process.env.PRICE_TRANSCRIBE_INPUT_PER_1M, 6.0);
+  const translationInPer1M = envNumber(pricing.translationInputPer1M ?? process.env.PRICE_TRANSLATE_INPUT_PER_1M, 0.4);
+  const translationOutPer1M = envNumber(pricing.translationOutputPer1M ?? process.env.PRICE_TRANSLATE_OUTPUT_PER_1M, 1.6);
+  const ttsPer1MChars = envNumber(process.env.PRICE_TTS_PER_1M_CHARS, 15.0);
 
   const transcription = ((usage.transcriptionInputTokens || 0) / 1_000_000) * transcriptionPer1MInput;
   const translationIn = ((usage.translationInputTokens || 0) / 1_000_000) * translationInPer1M;
@@ -287,6 +307,11 @@ function asNumber(value) {
   return typeof value === "number" ? value : 0;
 }
 
+function envNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
 function selectedSpeechSpeed(value) {
   const speed = Number(value);
   if (supportedSpeechSpeeds.has(speed)) return speed;
@@ -297,8 +322,55 @@ function selectedVoice(value) {
   return voiceByGender[value] || voiceByGender.male;
 }
 
+function selectedResponseConfig(value) {
+  return responseConfigs[value] || responseConfigs.balanced;
+}
+
 function ttsInstructions(outputLanguageName) {
   return `Speak clearly in ${outputLanguageName}. Keep the pace natural and easy to understand.`;
+}
+
+function buildTranscriptionPrompt(sourceContext, inputLanguageName) {
+  const cleanContext = String(sourceContext || "").trim().slice(-2500);
+  if (!cleanContext) {
+    return `This is a live church speech in ${inputLanguageName}. Preserve names, numbers, scripture references, and complete wording as accurately as possible.`;
+  }
+
+  return [
+    `This is a live church speech in ${inputLanguageName}.`,
+    `Use the previous transcript context only to improve continuity, names, and terminology.`,
+    `Previous context:`,
+    cleanContext
+  ].join("\n");
+}
+
+function buildTranslationInput({ sourceText, sourceContext, translationContext, inputLanguageName, outputLanguageName }) {
+  const cleanSourceContext = String(sourceContext || "").trim().slice(-5000);
+  const cleanTranslationContext = String(translationContext || "").trim().slice(-5000);
+
+  return [
+    {
+      role: "system",
+      content: [
+        `You are a careful professional interpreter for live church speeches.`,
+        `Translate from ${inputLanguageName} into natural, faithful ${outputLanguageName}.`,
+        `Preserve meaning, names, numbers, titles, scripture references, rhetorical emphasis, and sequence of ideas.`,
+        `Do not summarize, embellish, sermonize, or answer the speaker.`,
+        `The source text may begin or end mid-thought. Translate only the new source segment, but use context to resolve pronouns, names, and sentence continuity.`,
+        `Return only the ${outputLanguageName} translation.`
+      ].join(" ")
+    },
+    {
+      role: "user",
+      content: [
+        cleanSourceContext ? `Previous source transcript context:\n${cleanSourceContext}` : "",
+        cleanTranslationContext ? `Previous translation context:\n${cleanTranslationContext}` : "",
+        `New source segment to translate:\n${sourceText}`
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+    }
+  ];
 }
 
 function realtimeInstructions({ inputLanguageName, outputLanguageName, outputMode, speechSpeed }) {
@@ -525,6 +597,148 @@ app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
   }
 });
 
+app.post("/api/high-accuracy-segment", upload.single("audio"), async (req, res) => {
+  try {
+    if (currentMonthlyUsage().estimatedUsd >= monthlyUsageLimitUsd) {
+      return res.status(402).json({
+        error: `Monthly usage limit reached ($${monthlyUsageLimitUsd.toFixed(2)}).`,
+        usage: getSessionTotals(req.body.sessionId || "default")
+      });
+    }
+
+    const apiKey = req.header("x-openai-api-key");
+    if (!apiKey) {
+      return res.status(400).json({ error: "Missing OpenAI API key." });
+    }
+
+    const sessionId = req.body.sessionId || "default";
+    const selectedLanguage = String(req.body.language || "").toLowerCase();
+    const languageCode = supportedLanguages[selectedLanguage];
+    const inputLanguageName = languageNames[selectedLanguage];
+    const selectedOutputLanguage = String(req.body.outputLanguage || "english").toLowerCase();
+    const outputLanguageName = languageNames[selectedOutputLanguage];
+    const outputMode = supportedOutputModes.has(req.body.outputMode) ? req.body.outputMode : "text-and-speech";
+    const wantsText = outputMode !== "speech-only";
+    const wantsSpeech = outputMode !== "text-only";
+    const speechSpeed = selectedSpeechSpeed(req.body.speechSpeed);
+    const ttsVoice = selectedVoice(req.body.voiceGender);
+    const responseConfig = selectedResponseConfig(req.body.responseConfig);
+    const sourceContext = req.body.sourceContext || "";
+    const translationContext = req.body.translationContext || "";
+
+    if (!languageCode || !inputLanguageName) {
+      return res.status(400).json({ error: "Unsupported language selection." });
+    }
+
+    if (!outputLanguageName) {
+      return res.status(400).json({ error: "Unsupported output language selection." });
+    }
+
+    if (!req.file?.buffer) {
+      return res.status(400).json({ error: "Missing audio segment." });
+    }
+
+    const client = new OpenAI({ apiKey });
+    const originalName = req.file.originalname || "segment.wav";
+    const audioType = req.file.mimetype || "application/octet-stream";
+    const audioFile = await toFile(req.file.buffer, originalName, { type: audioType });
+
+    const transcription = await client.audio.transcriptions.create({
+      model: process.env.TRANSCRIBE_MODEL || "gpt-4o-transcribe",
+      file: audioFile,
+      language: languageCode,
+      prompt: buildTranscriptionPrompt(sourceContext, inputLanguageName),
+      response_format: "json"
+    });
+
+    const sourceText = (transcription.text || "").trim();
+    if (!sourceText) {
+      return res.json({
+        sourceText: "",
+        translatedText: "",
+        contextText: "",
+        audioBase64: "",
+        outputMode,
+        responseConfig: responseConfig.label,
+        responseModel: responseConfig.model,
+        usage: getSessionTotals(sessionId)
+      });
+    }
+
+    const translation = await client.responses.create({
+      model: responseConfig.model,
+      input: buildTranslationInput({
+        sourceText,
+        sourceContext,
+        translationContext,
+        inputLanguageName,
+        outputLanguageName
+      })
+    });
+
+    const translatedText = (translation.output_text || "").trim();
+
+    let audioBase64 = "";
+    if (translatedText && wantsSpeech) {
+      const speech = await client.audio.speech.create({
+        model: process.env.TTS_MODEL || "gpt-4o-mini-tts",
+        voice: process.env.TTS_VOICE || ttsVoice,
+        input: translatedText,
+        instructions: ttsInstructions(outputLanguageName),
+        format: "mp3",
+        speed: speechSpeed
+      });
+      const speechBuffer = Buffer.from(await speech.arrayBuffer());
+      audioBase64 = speechBuffer.toString("base64");
+    }
+
+    const totals = getSessionTotals(sessionId);
+    const transcriptionInputTokens = asNumber(transcription.usage?.input_tokens);
+    const translationInputTokens = asNumber(translation.usage?.input_tokens);
+    const translationOutputTokens = asNumber(translation.usage?.output_tokens);
+    const ttsChars = wantsSpeech ? translatedText.length : 0;
+
+    totals.transcriptionTokens += transcriptionInputTokens;
+    totals.translationInputTokens += translationInputTokens;
+    totals.translationOutputTokens += translationOutputTokens;
+    totals.ttsCharacters += ttsChars;
+
+    const estimatedSegmentCost = estimateCostUsd(
+      {
+        transcriptionInputTokens,
+        translationInputTokens,
+        translationOutputTokens
+      },
+      ttsChars,
+      {
+        translationInputPer1M: responseConfig.inputPricePer1M,
+        translationOutputPer1M: responseConfig.outputPricePer1M
+      }
+    );
+    const monthUsage = currentMonthlyUsage();
+
+    totals.estimatedUsd += estimatedSegmentCost;
+    monthUsage.estimatedUsd += estimatedSegmentCost;
+    totals.monthlyEstimatedUsd = monthUsage.estimatedUsd;
+    totals.monthlyLimitUsd = monthlyUsageLimitUsd;
+
+    res.json({
+      sourceText,
+      translatedText: wantsText ? translatedText : "",
+      contextText: translatedText,
+      audioBase64,
+      outputMode,
+      responseConfig: responseConfig.label,
+      responseModel: responseConfig.model,
+      usage: totals
+    });
+  } catch (error) {
+    console.error("high-accuracy-segment failed:", error);
+    const message = error?.message || "Unexpected server error";
+    res.status(500).json({ error: message });
+  }
+});
+
 app.post("/api/reset-session", (req, res) => {
   const sessionId = req.body?.sessionId;
   if (sessionId && sessionTotals.has(sessionId)) {
@@ -536,6 +750,10 @@ app.post("/api/reset-session", (req, res) => {
 
 app.get("/realtime", (_, res) => {
   res.sendFile(path.join(__dirname, "public", "realtime.html"));
+});
+
+app.get("/accuracy", (_, res) => {
+  res.sendFile(path.join(__dirname, "public", "accuracy.html"));
 });
 
 app.get("*", (_, res) => {
