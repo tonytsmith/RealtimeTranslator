@@ -232,7 +232,6 @@ const voiceByGender = {
 };
 
 const sessionTotals = new Map();
-const previousSourceBySession = new Map();
 
 function currentMonthKey() {
   const now = new Date();
@@ -301,10 +300,6 @@ function ttsInstructions(outputLanguageName) {
   return `Speak clearly in ${outputLanguageName}. Keep the pace natural and easy to understand.`;
 }
 
-function sourceContextKey(sessionId, inputLanguage, outputLanguage) {
-  return `${sessionId}:${inputLanguage}:${outputLanguage}`;
-}
-
 app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
   try {
     if (currentMonthlyUsage().estimatedUsd >= monthlyUsageLimitUsd) {
@@ -366,24 +361,21 @@ app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
       });
     }
 
-    const contextKey = sourceContextKey(sessionId, selectedLanguage, selectedOutputLanguage);
-    const previousSourceText = previousSourceBySession.get(contextKey) || "";
     const translation = await client.responses.create({
       model: process.env.TRANSLATE_MODEL || "gpt-4.1-mini",
       input: [
         {
           role: "system",
           content:
-            `Translate the current transcript chunk into faithful natural ${outputLanguageName}. Use the previous transcript only as context for continuity and pronoun/reference resolution. Do not translate or repeat the previous transcript. Do not summarize, shorten, or omit details from the current chunk. If the current chunk starts or ends mid-sentence, translate the current chunk as naturally as possible using the previous context. Return only the ${outputLanguageName} translation.`
+            `Translate the transcript into faithful natural ${outputLanguageName}. Do not summarize, shorten, or omit details. Keep names, numbers, and technical terms intact. If the input is a partial sentence, translate only what is present. Return only the ${outputLanguageName} translation.`
         },
         {
           role: "user",
-          content: `Previous transcript context:\n${previousSourceText || "(none)"}\n\nCurrent transcript chunk to translate:\n${sourceText}`
+          content: `Translate to ${outputLanguageName}:\n\n${sourceText}`
         }
       ]
     });
 
-    previousSourceBySession.set(contextKey, sourceText);
     const translatedText = (translation.output_text || "").trim();
 
     let audioBase64 = "";
@@ -445,14 +437,6 @@ app.post("/api/reset-session", (req, res) => {
   const sessionId = req.body?.sessionId;
   if (sessionId && sessionTotals.has(sessionId)) {
     sessionTotals.delete(sessionId);
-  }
-
-  if (sessionId) {
-    for (const key of previousSourceBySession.keys()) {
-      if (key.startsWith(`${sessionId}:`)) {
-        previousSourceBySession.delete(key);
-      }
-    }
   }
 
   res.json({ ok: true });
