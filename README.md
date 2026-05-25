@@ -19,7 +19,7 @@ Open `http://localhost:8787`.
 2. Enter your OpenAI API key.
 3. Select input and output languages.
 4. Select output mode: `Text Only`, `Text and Speech`, or `Speech Only`.
-5. Select speech speed, voice, and accent when speech output is enabled.
+5. Select speech speed, voice, and accent (`None`, `Light`, or `Strong`) when speech output is enabled.
 6. Press `Start`.
 7. Press `Pause` to keep listening but suppress translation/output.
 8. Press `Resume` to continue translation.
