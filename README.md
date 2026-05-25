@@ -54,7 +54,7 @@ Open `http://localhost:8787`.
 
 ## Notes
 - Supported input/output languages: English, Mandarin, Russian, Korean, Spanish, French, Japanese, German, Portuguese, Italian, Greek.
-- Translation output is sentence-buffered, so the app may wait briefly for a complete sentence or complete thought before displaying text or playing speech.
+- Translation uses the previous transcript chunk as context while translating the current chunk.
 - The app does not save transcript history.
 - The app is optimized for accuracy over minimum latency.
 - PWA install: in Chrome, open app menu and choose `Install`.

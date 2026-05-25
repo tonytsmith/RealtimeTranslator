@@ -232,7 +232,7 @@ const voiceByGender = {
 };
 
 const sessionTotals = new Map();
-const sourceBuffers = new Map();
+const previousSourceBySession = new Map();
 
 function currentMonthKey() {
   const now = new Date();
@@ -301,33 +301,8 @@ function ttsInstructions(outputLanguageName) {
   return `Speak clearly in ${outputLanguageName}. Keep the pace natural and easy to understand.`;
 }
 
-function sourceBufferKey(sessionId, inputLanguage, outputLanguage) {
+function sourceContextKey(sessionId, inputLanguage, outputLanguage) {
   return `${sessionId}:${inputLanguage}:${outputLanguage}`;
-}
-
-function joinTranscriptParts(first, second) {
-  return [first, second].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
-}
-
-function parseTranslationBufferResult(outputText, fallbackRemainder) {
-  const trimmed = (outputText || "").trim();
-  const withoutFence = trimmed.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
-  const start = withoutFence.indexOf("{");
-  const end = withoutFence.lastIndexOf("}");
-  const candidate = start >= 0 && end > start ? withoutFence.slice(start, end + 1) : withoutFence;
-
-  try {
-    const parsed = JSON.parse(candidate);
-    return {
-      translatedText: String(parsed.translatedText || "").trim(),
-      remainder: String(parsed.remainder || "").trim()
-    };
-  } catch {
-    return {
-      translatedText: "",
-      remainder: fallbackRemainder
-    };
-  }
 }
 
 app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
@@ -391,26 +366,25 @@ app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
       });
     }
 
-    const bufferKey = sourceBufferKey(sessionId, selectedLanguage, selectedOutputLanguage);
-    const bufferedSourceText = joinTranscriptParts(sourceBuffers.get(bufferKey) || "", sourceText);
+    const contextKey = sourceContextKey(sessionId, selectedLanguage, selectedOutputLanguage);
+    const previousSourceText = previousSourceBySession.get(contextKey) || "";
     const translation = await client.responses.create({
       model: process.env.TRANSLATE_MODEL || "gpt-4.1-mini",
       input: [
         {
           role: "system",
           content:
-            `You process streaming speech transcripts. The transcript may end mid-sentence because it comes from short audio chunks. Translate only complete sentences or complete semantic thoughts into faithful natural ${outputLanguageName}. Do not translate a trailing incomplete clause, phrase, or thought. Keep that incomplete trailing text in the original source language as remainder. Do not summarize, shorten, or omit details from completed text. Return strict JSON only with keys "translatedText" and "remainder". If nothing is complete yet, return an empty translatedText and put all input text in remainder.`
+            `Translate the current transcript chunk into faithful natural ${outputLanguageName}. Use the previous transcript only as context for continuity and pronoun/reference resolution. Do not translate or repeat the previous transcript. Do not summarize, shorten, or omit details from the current chunk. If the current chunk starts or ends mid-sentence, translate the current chunk as naturally as possible using the previous context. Return only the ${outputLanguageName} translation.`
         },
         {
           role: "user",
-          content: `Buffered transcript:\n\n${bufferedSourceText}`
+          content: `Previous transcript context:\n${previousSourceText || "(none)"}\n\nCurrent transcript chunk to translate:\n${sourceText}`
         }
       ]
     });
 
-    const bufferResult = parseTranslationBufferResult(translation.output_text, bufferedSourceText);
-    sourceBuffers.set(bufferKey, bufferResult.remainder);
-    const translatedText = bufferResult.translatedText;
+    previousSourceBySession.set(contextKey, sourceText);
+    const translatedText = (translation.output_text || "").trim();
 
     let audioBase64 = "";
     if (translatedText && wantsSpeech) {
@@ -474,9 +448,9 @@ app.post("/api/reset-session", (req, res) => {
   }
 
   if (sessionId) {
-    for (const key of sourceBuffers.keys()) {
+    for (const key of previousSourceBySession.keys()) {
       if (key.startsWith(`${sessionId}:`)) {
-        sourceBuffers.delete(key);
+        previousSourceBySession.delete(key);
       }
     }
   }
