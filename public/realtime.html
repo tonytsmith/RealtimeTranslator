@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -6,14 +6,15 @@
     <meta name="theme-color" content="#1f6f78" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="stylesheet" href="/styles.css" />
-    <title>Realtime Translator</title>
+    <title>Realtime Translator Beta</title>
   </head>
   <body>
     <main class="app">
       <div class="title-row">
-        <h1>Realtime Translator</h1>
-        <a class="mode-link" href="/realtime">Try Realtime Beta</a>
+        <h1>Realtime Translator Beta</h1>
+        <a class="mode-link" href="/">Stable Version</a>
       </div>
+
       <details class="card control-panel">
         <summary>Controls</summary>
         <div class="grid controls">
@@ -21,7 +22,7 @@
             <label for="language">Input Language</label>
             <select id="language">
               <option value="english">English</option>
-              <option value="mandarin">Mandarin</option>
+              <option value="mandarin" selected>Mandarin</option>
               <option value="russian">Russian</option>
               <option value="korean">Korean</option>
               <option value="spanish">Spanish</option>
@@ -81,25 +82,12 @@
               <span>Female</span>
             </label>
           </fieldset>
-
-          <div>
-            <label for="chunkMs">Delay</label>
-            <select id="chunkMs">
-              <option value="3000">3 Seconds</option>
-              <option value="5000">5 Seconds</option>
-              <option value="7000" selected>7 Seconds</option>
-              <option value="10000">10 Seconds</option>
-            </select>
-          </div>
-
-          <details class="api-key-panel">
-            <summary>OpenAI API Key</summary>
-            <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" aria-label="OpenAI API Key" />
-          </details>
         </div>
       </details>
 
-      <section class="card" style="margin-top: 12px">
+      <section class="card realtime-panel">
+        <p class="hint">This beta streams microphone audio directly through WebRTC for lower-latency, sentence-aware translation. It uses the server-side OpenAI key configured in Render.</p>
+
         <div class="row action-row">
           <button id="startBtn" class="primary icon-button" aria-label="Start" title="Start">
             <span aria-hidden="true">&#9654;</span>
@@ -114,12 +102,14 @@
             <span aria-hidden="true">&times;</span>
           </button>
         </div>
+
         <div id="status" class="status">Idle.</div>
-        <div id="transcript" class="transcript"></div>
-        <div id="cost" class="cost">Estimated session cost: $0.00 | Monthly usage: $0.00 / $20.00</div>
+        <div id="transcript" class="transcript realtime-transcript"></div>
+        <div id="usage" class="cost">Realtime usage estimate: not available yet.</div>
+        <audio id="remoteAudio" autoplay></audio>
       </section>
     </main>
 
-    <script src="/app.js" type="module"></script>
+    <script src="/realtime.js" type="module"></script>
   </body>
 </html>

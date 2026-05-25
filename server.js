@@ -13,6 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appPassword = process.env.APP_PASSWORD || "Translate";
 const authCookieName = "translator_session";
 const authSessions = new Map();
+const serverOpenAiApiKey = process.env.OPENAI_API_KEY || "";
 const monthlyUsageLimitUsd = Number.isFinite(Number(process.env.MONTHLY_USAGE_LIMIT_USD))
   ? Number(process.env.MONTHLY_USAGE_LIMIT_USD)
   : 20;
@@ -300,6 +301,97 @@ function ttsInstructions(outputLanguageName) {
   return `Speak clearly in ${outputLanguageName}. Keep the pace natural and easy to understand.`;
 }
 
+function realtimeInstructions({ inputLanguageName, outputLanguageName, outputMode, speechSpeed }) {
+  const speechInstruction =
+    outputMode === "text-only"
+      ? "Return text only. Do not produce audio."
+      : `Produce clear spoken audio output and a text transcript when available. Speak at about ${speechSpeed}x normal speed while staying understandable.`;
+
+  return [
+    `You are a realtime interpreter.`,
+    `Listen to ${inputLanguageName} speech and translate it into ${outputLanguageName}.`,
+    `Output only the translation. Do not answer questions, add commentary, or explain.`,
+    `Preserve names, numbers, dates, and technical terms as accurately as possible.`,
+    `Keep the translation natural and coherent across sentence boundaries.`,
+    speechInstruction
+  ].join(" ");
+}
+
+function realtimeVoice(value) {
+  return selectedVoice(value);
+}
+
+app.post("/api/realtime-session", express.text({ type: ["application/sdp", "text/plain"], limit: "1mb" }), async (req, res) => {
+  try {
+    if (currentMonthlyUsage().estimatedUsd >= monthlyUsageLimitUsd) {
+      return res.status(402).json({ error: `Monthly usage limit reached ($${monthlyUsageLimitUsd.toFixed(2)}).` });
+    }
+
+    if (!serverOpenAiApiKey) {
+      return res.status(500).json({ error: "Missing OPENAI_API_KEY server environment variable." });
+    }
+
+    const selectedLanguage = String(req.query.inputLanguage || "mandarin").toLowerCase();
+    const selectedOutputLanguage = String(req.query.outputLanguage || "english").toLowerCase();
+    const inputLanguageName = languageNames[selectedLanguage];
+    const outputLanguageName = languageNames[selectedOutputLanguage];
+    const outputMode = supportedOutputModes.has(req.query.outputMode) ? req.query.outputMode : "text-and-speech";
+    const speechSpeed = Math.min(selectedSpeechSpeed(req.query.speechSpeed), 1.5);
+    const voice = realtimeVoice(req.query.voiceGender);
+
+    if (!inputLanguageName || !outputLanguageName) {
+      return res.status(400).json({ error: "Unsupported realtime language selection." });
+    }
+
+    if (!req.body) {
+      return res.status(400).json({ error: "Missing WebRTC SDP offer." });
+    }
+
+    const sessionConfig = JSON.stringify({
+      type: "realtime",
+      model: process.env.REALTIME_MODEL || "gpt-realtime-2",
+      instructions: realtimeInstructions({ inputLanguageName, outputLanguageName, outputMode, speechSpeed }),
+      output_modalities: outputMode === "text-only" ? ["text"] : ["audio"],
+      audio: {
+        input: {
+          turn_detection: {
+            type: "semantic_vad",
+            eagerness: "medium",
+            create_response: true,
+            interrupt_response: false
+          }
+        },
+        output: {
+          voice,
+          speed: speechSpeed
+        }
+      }
+    });
+
+    const form = new FormData();
+    form.set("sdp", req.body);
+    form.set("session", sessionConfig);
+
+    const response = await fetch("https://api.openai.com/v1/realtime/calls", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${serverOpenAiApiKey}`
+      },
+      body: form
+    });
+
+    const answer = await response.text();
+    if (!response.ok) {
+      return res.status(response.status).send(answer);
+    }
+
+    res.type("application/sdp").send(answer);
+  } catch (error) {
+    console.error("realtime-session failed:", error);
+    res.status(500).json({ error: error?.message || "Failed to create realtime session." });
+  }
+});
+
 app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
   try {
     if (currentMonthlyUsage().estimatedUsd >= monthlyUsageLimitUsd) {
@@ -440,6 +532,10 @@ app.post("/api/reset-session", (req, res) => {
   }
 
   res.json({ ok: true });
+});
+
+app.get("/realtime", (_, res) => {
+  res.sendFile(path.join(__dirname, "public", "realtime.html"));
 });
 
 app.get("*", (_, res) => {

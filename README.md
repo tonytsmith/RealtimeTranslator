@@ -15,6 +15,7 @@ npm run dev
 Open `http://localhost:8787`.
 
 ## Use
+### Stable chunk translator
 1. Log in with the app password.
 2. Enter your OpenAI API key.
 3. Select input and output languages.
@@ -24,6 +25,21 @@ Open `http://localhost:8787`.
 7. Press `Pause` to keep listening but suppress translation/output.
 8. Press `Resume` to continue translation.
 9. Press `Stop` to end the session and reset session-cost totals.
+
+### Realtime beta
+Open `/realtime` after logging in.
+
+This separate version keeps the stable translator intact, but streams microphone audio through OpenAI Realtime over WebRTC. It should usually produce smoother sentence boundaries because the model hears the live stream instead of isolated audio chunks.
+
+Requirements for the realtime beta:
+- Set `OPENAI_API_KEY` in the server or Render environment variables.
+- Optional: set `REALTIME_MODEL` to override the default `gpt-realtime-2`.
+- Use HTTPS when hosted so mobile browsers allow microphone access.
+
+Current realtime beta limits:
+- It uses the server-side API key, not the browser API key field.
+- It shows reported realtime token usage when available, but does not yet convert realtime usage into a dollar estimate.
+- The monthly usage cap blocks starting a new realtime session only if the existing tracked monthly total is already over the limit.
 
 ## Access password
 - Default password: `Translate`
@@ -49,6 +65,8 @@ Open `http://localhost:8787`.
 - `TTS_VOICE` (optional override for all voices)
 - `TTS_MALE_VOICE` (default `cedar`)
 - `TTS_FEMALE_VOICE` (default `marin`)
+- `OPENAI_API_KEY` (required for `/realtime`)
+- `REALTIME_MODEL` (default `gpt-realtime-2`)
 - `APP_PASSWORD` (default `Translate`)
 - `MONTHLY_USAGE_LIMIT_USD` (default `20`)
 
