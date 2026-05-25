@@ -303,11 +303,11 @@ function ttsInstructions({ sourceLanguageName, outputLanguageName, accentMode })
     return base;
   }
 
-  if (outputLanguageName === "English" && sourceLanguageName !== "English") {
-    return `${base} Use a light ${sourceLanguageName} accent while remaining very clear.`;
+  if (sourceLanguageName !== outputLanguageName) {
+    return `${base} Use an audible but light ${sourceLanguageName} accent in the ${outputLanguageName} speech. The accent should be noticeable, but clarity is more important than authenticity.`;
   }
 
-  return `${base} Use a light natural accent associated with ${outputLanguageName}.`;
+  return `${base} Use a natural native ${outputLanguageName} pronunciation.`;
 }
 
 app.post("/api/translate-chunk", upload.single("audio"), async (req, res) => {
