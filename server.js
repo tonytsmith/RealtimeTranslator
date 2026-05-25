@@ -199,7 +199,14 @@ app.get("/api/health", (_, res) => {
 const supportedLanguages = {
   mandarin: "zh",
   russian: "ru",
-  korean: "ko"
+  korean: "ko",
+  spanish: "es",
+  french: "fr",
+  japanese: "ja",
+  german: "de",
+  portuguese: "pt",
+  italian: "it",
+  greek: "el"
 };
 
 const supportedOutputModes = new Set(["text-only", "text-and-speech", "speech-only"]);
